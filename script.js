@@ -99,6 +99,7 @@ async function refreshUI() {
   statReferrals.textContent = 'Referrals: ' + direct;
 
   await showLevelReferralData();
+  await checkUnlockedLevels();
 }
 
 approveMaxBtn.addEventListener('click', async () => {
@@ -158,5 +159,21 @@ async function showLevelReferralData() {
     const div = document.createElement('div');
     div.innerHTML = `<b>Level ${level + 1}</b>: ${users.length} Members | Total Staked: ${(totalStaked / 1e18).toFixed(2)} VNST`;
     container.appendChild(div);
+  }
+}
+
+async function checkUnlockedLevels() {
+  const c = contract();
+  const direct = await c.methods.getReferralCount(account).call();
+  const required = [2, 2, 2, 2, 2]; // ये Smart Contract से ले सकते हैं
+
+  const unlockDiv = document.getElementById('levelUnlockStatus');
+  unlockDiv.innerHTML = '';
+
+  for (let i = 0; i < 5; i++) {
+    const isUnlocked = direct >= required[i];
+    const div = document.createElement('div');
+    div.innerHTML = `Level ${i + 1}: ${isUnlocked ? '✅ Unlocked' : '🔒 Locked (Need ' + required[i] + ' referrals)'}`;
+    unlockDiv.appendChild(div);
   }
 }
