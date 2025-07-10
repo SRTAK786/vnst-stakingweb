@@ -135,16 +135,48 @@ function onConnect() {
   refreshUI();
 }
 
+// refreshUI फंक्शन को ऐसे अपडेट करें
 async function refreshUI() {
   if (!account) return;
   
   try {
     const c = contract();
-    const [rVnt, rUsdt] = await c.methods.getPendingRewards(account).call();
+    
+    // पहले चेक करें कि कॉन्ट्रैक्ट एक्सेसिबल है
+    const isPaused = await c.methods.paused().call();
+    if (isPaused) {
+      alert('Contract is currently paused. Please try later.');
+      return;
+    }
+
+    // Pending rewards को सही तरीके से हैंडल करें
+    let rVnt = 0, rUsdt = 0;
+    try {
+      const rewards = await c.methods.getPendingRewards(account).call();
+      if (Array.isArray(rewards) {
+        rVnt = rewards[0] || 0;
+        rUsdt = rewards[1] || 0;
+      }
+    } catch (e) {
+      console.log("Could not fetch pending rewards", e);
+    }
+    
     pendingVNT.textContent = 'Pending VNT: ' + (rVnt / 1e18).toFixed(4);
     pendingUSDT.textContent = 'Pending USDT: ' + (rUsdt / 1e18).toFixed(4);
 
-    const [staked, earned, direct] = await c.methods.getUserStats(account).call();
+    // User stats को सही तरीके से हैंडल करें
+    let staked = 0, earned = 0, direct = 0;
+    try {
+      const stats = await c.methods.getUserStats(account).call();
+      if (Array.isArray(stats) && stats.length >= 3) {
+        staked = stats[0] || 0;
+        earned = stats[1] || 0;
+        direct = stats[2] || 0;
+      }
+    } catch (e) {
+      console.log("Could not fetch user stats", e);
+    }
+    
     statStaked.textContent = 'Staked: ' + (staked / 1e18).toFixed(2);
     statEarned.textContent = 'Earned: ' + (earned / 1e18).toFixed(2);
     statReferrals.textContent = 'Referrals: ' + direct;
@@ -156,34 +188,7 @@ async function refreshUI() {
   }
 }
 
-approveMaxBtn.addEventListener('click', async () => {
-  if (!account) {
-    alert('Please connect your wallet first');
-    return;
-  }
-  
-  try {
-    const amount = document.getElementById('stakeAmount').value;
-    if (!amount || isNaN(amount)) {
-      alert('Please enter a valid amount');
-      return;
-    }
-    
-    // Approve maximum possible amount (2^256 - 1)
-    const maxAmount = web3.utils.toBN('115792089237316195423570985008687907853269984665640564039457584007913129639935');
-    
-    const t = vnstTokenContract();
-    const tx = await t.methods.approve(stakingContractAddress, maxAmount)
-      .send({ from: account });
-    
-    console.log("Approval successful:", tx);
-    alert('Approval successful! You can now stake your VNST tokens.');
-  } catch (err) {
-    console.error("Approval failed:", err);
-    alert('Approval failed: ' + err.message);
-  }
-});
-
+// stakeBtn इवेंट लिसनर को ऐसे अपडेट करें
 stakeBtn.addEventListener('click', async () => {
   if (!account) {
     alert('Please connect your wallet first');
@@ -194,46 +199,74 @@ stakeBtn.addEventListener('click', async () => {
     const amount = document.getElementById('stakeAmount').value;
     const referralInput = document.getElementById('referralAddress').value.trim();
 
-    if (!amount || isNaN(amount)) {
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
       alert('Please enter a valid amount to stake');
       return;
     }
     
     if (!web3.utils.isAddress(referralInput)) {
-      alert("Please enter a valid referral address");
+      alert("कृपया सही रेफरल एड्रेस डालें (0x... के फॉर्मेट में)");
       return;
     }
 
-    // Check allowance first
-    const t = vnstTokenContract();
-    const allowance = await t.methods.allowance(account, stakingContractAddress).call();
+    // कॉन्ट्रैक्ट की पॉज्ड स्थिति चेक करें
+    const c = contract();
+    const isPaused = await c.methods.paused().call();
+    if (isPaused) {
+      alert('Contract is currently paused. Please try later.');
+      return;
+    }
+
+    // स्टेक लिमिट चेक करें
+    const minStake = await c.methods.minStakeAmount().call();
+    const maxStake = await c.methods.maxStakeAmount().call();
     const amountWei = web3.utils.toWei(amount, 'ether');
     
-    if (web3.utils.toBN(allowance).lt(web3.utils.toBN(amountWei))) {
-      alert('Please approve sufficient VNST tokens first');
+    if (web3.utils.toBN(amountWei).lt(web3.utils.toBN(minStake))) {
+      alert(`Minimum stake amount is ${web3.utils.fromWei(minStake)} VNST`);
+      return;
+    }
+    
+    if (web3.utils.toBN(amountWei).gt(web3.utils.toBN(maxStake))) {
+      alert(`Maximum stake amount is ${web3.utils.fromWei(maxStake)} VNST`);
       return;
     }
 
-    // Check balance
+    // Allowance चेक करें
+    const t = vnstTokenContract();
+    const allowance = await t.methods.allowance(account, stakingContractAddress).call();
+    
+    if (web3.utils.toBN(allowance).lt(web3.utils.toBN(amountWei))) {
+      alert('कृपया पहले पर्याप्त VNST टोकन approve करें');
+      return;
+    }
+
+    // Balance चेक करें
     const balance = await t.methods.balanceOf(account).call();
     if (web3.utils.toBN(balance).lt(web3.utils.toBN(amountWei))) {
-      alert('Insufficient VNST balance');
+      alert('आपके पास पर्याप्त VNST टोकन नहीं हैं');
       return;
     }
 
-    const c = contract();
+    // स्टेकिंग ट्रांजैक्शन भेजें
     const tx = await c.methods.stake(amountWei, referralInput)
       .send({ 
         from: account,
-        gas: 300000 
+        gas: 500000 
       });
     
     console.log("Staking successful:", tx);
-    alert('Staking successful!');
+    alert('स्टेकिंग सफल!');
     await refreshUI();
   } catch (err) {
     console.error("Staking failed:", err);
-    alert('Staking failed: ' + err.message);
+    
+    // विस्तृत एरर मैसेज दिखाएं
+    if (err.message.includes('revert')) {
+      alert('ट्रांजैक्शन असफल: कॉन्ट्रैक्ट ने इसे रिजेक्ट कर दिया। कृपया रेफरल एड्रेस और स्टेक राशि चेक करें');
+    } else {
+      alert('स्टेकिंग असफल: ' + err.message);
+    }
   }
 });
 
