@@ -46,17 +46,26 @@ connectMM.addEventListener('click', async () => {
 });
 
 connectWC.addEventListener('click', async () => {
-  providerWalletConnect = new WalletConnectProvider.default({
-    rpc: { 56: 'https://bsc-dataseed.binance.org/', 97: 'https://data-seed-prebsc-1-s1.binance.org:8545/' },
-    chainId: 97,
+  const WalletConnectProvider = window.WalletConnectProvider.default;
+
+  const providerWalletConnect = new WalletConnectProvider({
+    rpc: {
+      56: 'https://bsc-dataseed.binance.org/',
+      97: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+    },
+    chainId: 97 // Testnet — इसे ज़रूरत के अनुसार 56 कर सकते हैं mainnet के लिए
   });
+
   await providerWalletConnect.enable();
   web3 = new Web3(providerWalletConnect);
   account = (await web3.eth.getAccounts())[0];
-  await ensureNetwork();
-  onConnect();
-  closeModal();
+
+  await ensureNetwork(); // आपने अगर लिखा है तो
+  onConnect(); // connect होने के बाद के UI updates
+
+  closeModal(); // modal बंद करने वाला function
 });
+
 
 async function ensureNetwork() {
   const id = await web3.eth.getChainId();
