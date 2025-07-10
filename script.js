@@ -194,7 +194,7 @@ stakeBtn.addEventListener('click', async () => {
     const amount = document.getElementById('stakeAmount').value;
     const referralInput = document.getElementById('referralAddress').value.trim();
 
-    if (!amount || isNaN(amount) {
+    if (!amount || isNaN(amount)) {
       alert('Please enter a valid amount to stake');
       return;
     }
