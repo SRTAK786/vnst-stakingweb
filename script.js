@@ -110,7 +110,15 @@ approveMaxBtn.addEventListener('click', async () => {
 
 stakeBtn.addEventListener('click', async () => {
   const amount = document.getElementById('stakeAmount').value;
-  const ref = account; // or obtain from referral input
+  const referralInput = document.getElementById('referralAddress').value.trim();
+
+if (!web3.utils.isAddress(referralInput)) {
+  alert("❌ कृपया एक valid referral address दर्ज करें।");
+  return;
+}
+
+const ref = referralInput;
+
   const c = contract();
   await c.methods.stake(web3.utils.toWei(amount, 'ether'), ref).send({ from: account });
   await refreshUI();
