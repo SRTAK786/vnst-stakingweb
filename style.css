@@ -360,3 +360,98 @@ footer p { margin-top:1.5rem; font-size:.9rem; opacity:.8; }
   .btn{padding:.6rem 1.2rem;font-size:.9rem;min-width:140px;}
   .wallet-connect-btn{padding:.5rem 1rem;min-width:140px;}
 }
+
+/* 🌐 Referral and Level Info Styling */
+#referralAddress {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+/* 📊 Level Referral Data Styling */
+#levelData {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  color: #f1f1f1;
+  font-size: 15px;
+  line-height: 1.6;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
+/* 🔐 Level Unlock Status Styling */
+#levelUnlockStatus {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #111;
+  border-left: 5px solid #ffaa00;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.2);
+}
+
+/* 🔴 Locked Level */
+.locked {
+  color: #ff4d4d;
+  font-weight: bold;
+}
+
+/* 🟢 Unlocked Level */
+.unlocked {
+  color: #4dff88;
+  font-weight: bold;
+}
+
+/* 📱 Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .card, .stake-card, .wallet-card {
+    width: 90%;
+    margin: 10px auto;
+    padding: 15px;
+    font-size: 14px;
+  }
+
+  #referralAddress,
+  #stakeAmount,
+  #connectButton,
+  #connectWC,
+  #stakeButton,
+  #claimButton {
+    width: 100%;
+    font-size: 16px;
+    padding: 10px;
+    margin: 8px 0;
+  }
+
+  #levelData,
+  #levelUnlockStatus {
+    font-size: 14px;
+    padding: 10px;
+    margin-top: 12px;
+  }
+
+  .locked,
+  .unlocked {
+    font-size: 15px;
+  }
+
+  /* Heading & Title */
+  h1, h2, h3 {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  /* Navbar or top buttons if any */
+  .top-bar,
+  .header-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+}
