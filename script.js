@@ -97,6 +97,8 @@ async function refreshUI() {
   statStaked.textContent = 'Staked: ' + (staked / 1e18).toFixed(2);
   statEarned.textContent = 'Earned: ' + (earned / 1e18).toFixed(2);
   statReferrals.textContent = 'Referrals: ' + direct;
+
+  await showLevelReferralData();
 }
 
 approveMaxBtn.addEventListener('click', async () => {
@@ -136,3 +138,25 @@ claimUsdtBtn.addEventListener('click', async () => {
 
 // Auto UI refresh every minute
 setInterval(() => account && refreshUI(), 60000);
+
+async function showLevelReferralData() {
+  const c = contract();
+  const levels = 5;
+  const container = document.getElementById('levelData');
+
+  container.innerHTML = '';
+  
+  for (let level = 0; level < levels; level++) {
+    const users = await c.methods.getLevelReferrals(account, level).call();
+    let totalStaked = 0;
+
+    for (let u of users) {
+      const stakeData = await c.methods.stakes(u).call();
+      totalStaked += parseFloat(stakeData.amount);
+    }
+
+    const div = document.createElement('div');
+    div.innerHTML = `<b>Level ${level + 1}</b>: ${users.length} Members | Total Staked: ${(totalStaked / 1e18).toFixed(2)} VNST`;
+    container.appendChild(div);
+  }
+}
