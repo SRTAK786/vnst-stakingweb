@@ -153,7 +153,7 @@ async function refreshUI() {
     let rVnt = 0, rUsdt = 0;
     try {
       const rewards = await c.methods.getPendingRewards(account).call();
-      if (Array.isArray(rewards) {
+      if (Array.isArray(rewards)) {
         rVnt = rewards[0] || 0;
         rUsdt = rewards[1] || 0;
       }
