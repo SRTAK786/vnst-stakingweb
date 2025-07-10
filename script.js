@@ -164,7 +164,7 @@ approveMaxBtn.addEventListener('click', async () => {
   
   try {
     const amount = document.getElementById('stakeAmount').value;
-    if (!amount || isNaN(amount) {
+    if (!amount || isNaN(amount)) {
       alert('Please enter a valid amount');
       return;
     }
