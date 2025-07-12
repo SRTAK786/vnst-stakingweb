@@ -215,6 +215,8 @@ function onDisconnect() {
 }
 
 // Main Functions
+// script.js में निम्नलिखित फंक्शन्स को अपडेट करें
+
 async function refreshUI() {
   if (!account) return;
   
@@ -243,19 +245,14 @@ async function refreshUI() {
     pendingVNT.textContent = `Pending VNT: ${(rVnt / 1e18).toFixed(4)}`;
     pendingUSDT.textContent = `Pending USDT: ${(rUsdt / 1e18).toFixed(4)}`;
 
-    // Get user stats
-    let staked = 0, earned = 0, direct = 0, level = 0;
+    // Get user stats - UPDATED TO MATCH YOUR CONTRACT STRUCTURE
+    let staked = 0, earned = 0, direct = 0;
     try {
-      const stats = await c.methods.users(account).call();
-      if (stats) {
-        staked = stats.totalStaked || 0;
-        earned = stats.totalClaimed || 0;
-        direct = stats.referralCount || 0;
-      }
-      
-      // Get user level based on referrals
-      const referrals = await c.methods.getReferralCount(account).call();
-      level = Math.min(Math.floor(referrals / 2), 4); // 2 referrals per level, max level 4
+      // Updated to use your contract's user mapping directly
+      const userInfo = await c.methods.users(account).call();
+      staked = userInfo.totalStaked || 0;
+      earned = userInfo.totalClaimed || 0;
+      direct = userInfo.referralCount || 0;
     } catch (e) {
       console.log("Could not fetch user stats", e);
     }
@@ -263,7 +260,6 @@ async function refreshUI() {
     statStaked.textContent = `Staked: ${(staked / 1e18).toFixed(2)} VNST`;
     statEarned.textContent = `Earned: ${(earned / 1e18).toFixed(2)} VNT`;
     statReferrals.textContent = `Referrals: ${direct}`;
-    statLevel.textContent = `Current Level: ${level + 1}`;
 
     await showLevelReferralData();
     await checkUnlockedLevels();
@@ -272,176 +268,7 @@ async function refreshUI() {
   }
 }
 
-approveMaxBtn.addEventListener('click', async () => {
-  if (!account) {
-    alert('Please connect your wallet first');
-    return;
-  }
-  
-  try {
-    const amount = document.getElementById('stakeAmount').value;
-    if (!amount || isNaN(amount)) {
-      alert('Please enter a valid amount');
-      return;
-    }
-
-    // Calculate exact amount needed
-    const amountWei = web3.utils.toWei(amount, 'ether');
-    
-    const t = vnstTokenContract();
-    const tx = await t.methods.approve(stakingContractAddress, amountWei)
-      .send({ from: account });
-    
-    console.log("Approval successful:", tx);
-    alert(`Successfully approved ${amount} VNST for staking!`);
-  } catch (err) {
-    console.error("Approval failed:", err);
-    
-    let errorMessage = 'Approval failed';
-    if (err.message.includes('User denied transaction')) {
-      errorMessage = 'Transaction was rejected by user';
-    } else if (err.message.includes('revert')) {
-      errorMessage += ': Contract rejected the transaction';
-    } else {
-      errorMessage += ': ' + (err.message || err);
-    }
-    
-    alert(errorMessage);
-  }
-});
-
-stakeBtn.addEventListener('click', async () => {
-  if (!account) {
-    alert('Please connect your wallet first');
-    return;
-  }
-  
-  try {
-    const amount = document.getElementById('stakeAmount').value;
-    const referralInput = document.getElementById('referralAddress').value.trim();
-
-    if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      alert('Please enter a valid amount to stake');
-      return;
-    }
-    
-    if (Number(amount) > maxStakeLimit) {
-      alert(`Maximum stake amount is ${maxStakeLimit} VNST`);
-      return;
-    }
-    
-    // Check referral address if provided
-    if (referralInput && !web3.utils.isAddress(referralInput)) {
-      alert("Please enter a valid referral address (0x...) or leave empty");
-      return;
-    }
-
-    // Check contract status
-    const c = contract();
-    const isPaused = await c.methods.paused().call();
-    if (isPaused) {
-      alert('Contract is currently paused. Please try later.');
-      return;
-    }
-
-    const amountWei = web3.utils.toWei(amount, 'ether');
-
-    // Check allowance
-    const t = vnstTokenContract();
-    const allowance = await t.methods.allowance(account, stakingContractAddress).call();
-    
-    if (web3.utils.toBN(allowance).lt(web3.utils.toBN(amountWei))) {
-      alert('Please approve VNST tokens first');
-      return;
-    }
-
-    // Check balance
-    const balance = await t.methods.balanceOf(account).call();
-    if (web3.utils.toBN(balance).lt(web3.utils.toBN(amountWei))) {
-      alert('Insufficient VNST balance');
-      return;
-    }
-
-    // Send staking transaction
-    const referrer = referralInput || '0x0000000000000000000000000000000000000000';
-    const tx = await c.methods.stake(amountWei, referrer)
-      .send({ 
-        from: account,
-        gas: 500000 
-      });
-    
-    console.log("Staking successful:", tx);
-    alert('Staking successful!');
-    await refreshUI();
-  } catch (err) {
-    console.error("Staking failed:", err);
-    
-    let errorMessage = 'Staking failed';
-    if (err.message.includes('User denied transaction')) {
-      errorMessage = 'Transaction was rejected by user';
-    } else if (err.message.includes('revert')) {
-      errorMessage += ': Contract rejected the transaction';
-      if (err.message.includes('Invalid referral')) {
-        errorMessage += ' - Invalid referral address';
-      } else if (err.message.includes('Amount too high')) {
-        errorMessage += ` - Amount exceeds maximum stake limit of ${maxStakeLimit} VNST`;
-      } else if (err.message.includes('Blacklisted')) {
-        errorMessage += ' - Your address is blacklisted';
-      }
-    } else {
-      errorMessage += ': ' + (err.message || err);
-    }
-    
-    alert(errorMessage);
-  }
-});
-
-claimTokenBtn.addEventListener('click', async () => {
-  if (!account) {
-    alert('Please connect your wallet first');
-    return;
-  }
-  
-  try {
-    const c = contract();
-    
-    // Check if there are rewards to claim
-    const rewards = await c.methods.getPendingRewards(account).call();
-    if ((rewards[0] / 1e18) < 0.0001 && (rewards[1] / 1e18) < 0.0001) {
-      alert('No rewards available to claim');
-      return;
-    }
-
-    const tx = await c.methods.claimRewards().send({ 
-      from: account,
-      gas: 500000 
-    });
-    
-    console.log("Claim successful:", tx);
-    alert('Rewards claimed successfully!');
-    await refreshUI();
-  } catch (err) {
-    console.error("Claim failed:", err);
-    
-    let errorMessage = 'Claim failed';
-    if (err.message.includes('User denied transaction')) {
-      errorMessage = 'Transaction was rejected by user';
-    } else if (err.message.includes('revert')) {
-      errorMessage += ': Contract rejected the transaction';
-      if (err.message.includes('No rewards')) {
-        errorMessage += ' - No rewards available to claim';
-      } else if (err.message.includes('Too frequent')) {
-        errorMessage += ' - You can only claim once per day';
-      }
-    } else {
-      errorMessage += ': ' + (err.message || err);
-    }
-    
-    alert(errorMessage);
-  }
-});
-
-// Helper Functions
+// UPDATED showLevelReferralData FUNCTION
 async function showLevelReferralData() {
   const c = contract();
   const levels = 5;
@@ -451,7 +278,8 @@ async function showLevelReferralData() {
   
   for (let level = 0; level < levels; level++) {
     try {
-      const count = await c.methods.getReferralCount(account, level).call();
+      // Updated to pass both parameters (account and level)
+      const count = await c.methods.referralCountByLevel(account, level).call();
       const div = document.createElement('div');
       div.innerHTML = `<b>Level ${level + 1}</b>: ${count} Members`;
       container.appendChild(div);
@@ -461,19 +289,27 @@ async function showLevelReferralData() {
   }
 }
 
+// UPDATED checkUnlockedLevels FUNCTION
 async function checkUnlockedLevels() {
   const c = contract();
-  const direct = await c.methods.getReferralCount(account).call();
-  const required = [2, 2, 2, 2, 2]; // These should ideally come from contract
-
   const unlockDiv = document.getElementById('levelUnlockStatus');
   unlockDiv.innerHTML = '';
 
-  for (let i = 0; i < 5; i++) {
-    const isUnlocked = direct >= required[i];
-    const div = document.createElement('div');
-    div.innerHTML = `Level ${i + 1}: ${isUnlocked ? '✅ Unlocked' : '🔒 Locked (Need ' + required[i] + ' referrals)'}`;
-    unlockDiv.appendChild(div);
+  try {
+    // Get user's total referral count
+    const userInfo = await c.methods.users(account).call();
+    const direct = userInfo.referralCount || 0;
+    
+    // Check each level (assuming 2 referrals needed per level)
+    for (let i = 0; i < 5; i++) {
+      const required = (i + 1) * 2; // 2,4,6,8,10 referrals needed
+      const isUnlocked = direct >= required;
+      const div = document.createElement('div');
+      div.innerHTML = `Level ${i + 1}: ${isUnlocked ? '✅ Unlocked' : '🔒 Locked (Need ' + required + ' referrals)'}`;
+      unlockDiv.appendChild(div);
+    }
+  } catch (e) {
+    console.log("Error checking unlocked levels", e);
   }
 }
 
